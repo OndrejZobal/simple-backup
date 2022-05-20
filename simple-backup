@@ -1,0 +1,62 @@
+#!/bin/sh
+
+### =========
+### Variables
+### =========
+
+# A directory where the backups will be placed.
+backup_dir=
+
+# The command that will return a byte stream of data to back up on stdout.
+# Usually this will be tar or ssh or copy.
+source_command=
+
+# How many backups shold be kept.
+keep_count=
+
+# Suffix that will be appended to fhe filename after timestamp
+name_suffix=
+
+### ====================
+### Processing arguments
+### ====================
+if [ "$#" -ne 4 ]; then
+    echo "Bad arguments!" >/dev/stderr
+    exit 1
+    fi
+
+backup_dir="$1"
+# Add trailing slash if it's not there already.
+if [ -z $(echo "$backup_dir" | grep -E ".*/$") ]; then
+    backup_dir="$backup_dir/"
+    fi
+
+source_command="$2"
+keep_count="$3"
+name_suffix="$4"
+
+### ======================
+### Execute backup command
+### ======================
+# Create backup
+(echo "$source_command" | sh > "${backup_dir}/$(date -uIseconds)-${name_suffix}") \
+    || (echo "Error creating backup!" > /dev/stderr; exit 1)
+
+
+
+### ==================
+### Delete old backups
+### ==================
+# Delete old backups
+delete_list=$(ls "${backup_dir}" | sort -r | awk -F "\n" -v keep=${keep_count} -v dir=${backup_dir} '
+                 BEGIN{
+                    cnt=0
+                 } {
+                    if (cnt >= keep)
+                        {printf "\"" dir $0 "\" "}
+                        cnt++
+                 }')
+
+if [ "$delete_list" ]; then
+    echo ${delete_list} | xargs rm
+    fi
