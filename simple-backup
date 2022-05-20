@@ -1,4 +1,5 @@
-#!/bin/sh
+#!/bin/env bash
+
 
 ### =========
 ### Variables
@@ -8,8 +9,16 @@
 backup_dir=
 
 # The command that will return a byte stream of data to back up on stdout.
-# Usually this will be tar or ssh or copy.
+# Usually this will be tar or ssh or rsync.
+# Output has to be stream on stdout
 source_command=
+
+# Alternative to source command: path to a local source file
+# that will be copied
+source_file=
+
+# Filename of the backup
+backup_name=
 
 # How many backups shold be kept.
 keep_count=
@@ -17,13 +26,64 @@ keep_count=
 # Suffix that will be appended to fhe filename after timestamp
 name_suffix=
 
+
 ### ====================
 ### Processing arguments
 ### ====================
-if [ "$#" -ne 4 ]; then
-    echo "Bad arguments!" >/dev/stderr
+while getopts 'hn:Ns:x:c:' o; do
+    case "$o" in
+        # Print help
+        h)
+            echo "help"
+            exit 0
+            ;;
+
+        # Execute to get backup
+        n)
+            n=$(( $OPTIND - 1 ))
+            backup_name=${!n}
+            ;;
+        # Keep original filename
+        N)
+            if [ -z "$source_file" ]; then
+                echo "You have to specify a source file (-c) before -N!"
+                exit 1
+                fi
+            backup_name=$(echo "$source_file" | awk -F "/" '{print $(NF)}')
+            ;;
+        # Set suffix
+        s)
+            n=$(( $OPTIND - 1 ))
+            name_suffix=${!n}
+            ;;
+        # Backup with command
+        x)
+            n=$(( $OPTIND - 1 ))
+            source_command=${!n}
+            ;;
+        # Backup by copy
+        c)
+            n=$(( $OPTIND - 1 ))
+            source_file=${!n}
+            ;;
+        *)
+            ;;
+    esac
+done
+
+# Edgecases
+if [[ "$source_command" && "$source_file" ]]; then
+    echo "Both source file and source command have been given! Pick one!"
     exit 1
     fi
+
+if [[ ! ("$source_command" || "$source_file") ]]; then
+    echo "You either have to specify source command (-x) or a source file (-c)"
+    exit 1
+    fi
+
+# Shifting arguments to account for flags.
+shift $(($OPTIND -1))
 
 backup_dir="$1"
 # Add trailing slash if it's not there already.
@@ -31,23 +91,33 @@ if [ -z $(echo "$backup_dir" | grep -E ".*/$") ]; then
     backup_dir="$backup_dir/"
     fi
 
-source_command="$2"
-keep_count="$3"
-name_suffix="$4"
+keep_count="$2"
 
-### ======================
-### Execute backup command
-### ======================
-# Create backup
-(echo "$source_command" | sh > "${backup_dir}/$(date -uIseconds)-${name_suffix}") \
+if [ "$#" -ne 2 ]; then
+    echo "Bad arguments!" >/dev/stderr
+    exit 1
+    fi
+
+### =================
+### Do the backup up
+### =================
+# Generate backup name
+if [ -z "$backup_name" ]; then
+    backup_name="$(date -uIseconds)"
+    fi
+
+# Execute backup
+if [ "$source_command" ]; then
+(echo "$source_command" | sh > "${backup_dir}/${backup_name}""${name_suffix}") \
     || (echo "Error creating backup!" > /dev/stderr; exit 1)
-
-
+else
+    cp "$source_file" "${backup_dir}/${backup_name}""${name_suffix}" \
+    || (echo "Error creating backup!" > /dev/stderr; exit 1)
+    fi
 
 ### ==================
 ### Delete old backups
 ### ==================
-# Delete old backups
 delete_list=$(ls "${backup_dir}" | sort -r | awk -F "\n" -v keep=${keep_count} -v dir=${backup_dir} '
                  BEGIN{
                     cnt=0
@@ -60,3 +130,4 @@ delete_list=$(ls "${backup_dir}" | sort -r | awk -F "\n" -v keep=${keep_count} -
 if [ "$delete_list" ]; then
     echo ${delete_list} | xargs rm
     fi
+
