@@ -26,6 +26,9 @@ keep_count=
 # Suffix that will be appended to fhe filename after timestamp
 name_suffix=
 
+# Is set, if the new file name should be the same as the old one.
+preserve_name=
+
 
 ### ====================
 ### Processing arguments
@@ -50,6 +53,7 @@ while getopts 'hn:Ns:x:c:' o; do
                 exit 1
                 fi
             backup_name=$(echo "$source_file" | awk -F "/" '{print $(NF)}')
+            preserve_name=1
             ;;
         # Set suffix
         s)
@@ -110,9 +114,33 @@ if [ -z "$backup_name" ]; then
 if [ "$source_command" ]; then
 (echo "$source_command" | sh > "${backup_dir}/${backup_name}""${name_suffix}") \
     || (echo "Error creating backup!" > /dev/stderr; exit 1)
+
 else
-    cp "$source_file" "${backup_dir}/${backup_name}""${name_suffix}" \
-    || (echo "Error creating backup!" > /dev/stderr; exit 1)
+    if [ -d "$source_file" ]; then
+        # Add trailing "/" if its missing
+        if [ -z $(echo "$source_file" | grep -E ".*/$") ]; then
+            source_file="$source_file/"
+            fi
+        echo "$source_file"
+        source_file="${source_file}""$(ls "$source_file" | sort | sed 1q)"
+        echo "$source_file"
+
+        if [ -z "$source_file" ]; then
+            echo "Source directory seem to be empty" >/dev/stderr
+            exit 1
+            fi
+
+        if [ "$preserve_name" ]; then
+            echo "testdjalskfjdsklj"
+            backup_name=$(echo "$source_file" | awk -F "/" '{print $(NF)}')
+            fi
+
+        fi
+
+    # Try to hardlink, else just copy sourcefile to backup dir.
+    (ln "$source_file" "${backup_dir}/${backup_name}""${name_suffix}" \
+        || cp "$source_file" "${backup_dir}/${backup_name}""${name_suffix}") \
+        || (echo "Error creating backup!" > /dev/stderr; exit 1)
     fi
 
 ### ==================
