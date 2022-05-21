@@ -163,9 +163,7 @@ else
         if [ -z $(echo "$source_file" | grep -E ".*/$") ]; then
             source_file="$source_file/"
             fi
-        echo "$source_file"
         source_file="${source_file}""$(ls "$source_file" | sort | sed 1q)"
-        echo "$source_file"
 
         if [ -z "$source_file" ]; then
             echo "Source directory seem to be empty" >/dev/stderr
@@ -173,7 +171,6 @@ else
             fi
 
         if [ "$preserve_name" ]; then
-            echo "testdjalskfjdsklj"
             backup_name=$(echo "$source_file" | awk -F "/" '{print $(NF)}')
             fi
 
