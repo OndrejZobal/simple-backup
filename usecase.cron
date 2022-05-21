@@ -1,0 +1,28 @@
+SHELL=/bin/bash
+PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin
+
+# For details see man 4 crontabs
+# Example of job definition:
+# .---------------- minute (0 - 59)
+# |  .------------- hour (0 - 23)
+# |  |  .---------- day of month (1 - 31)
+# |  |  |  .------- month (1 - 12) OR jan,feb,mar,apr ...
+# |  |  |  |  .---- day of week (0 - 6) (Sunday=0 or 7) OR sun,mon,tue,wed,thu,fri,sat
+# |  |  |  |  |
+# *  *  *  *  * user-name  command to be executed
+
+backup_dir="/data/backups"
+remote_dir="/data/important/live"
+daily_keep=7
+weekly_keep=4
+monthly_keep=12
+yearly_keep=10
+
+# Daily
+0  0  *  *  * root simple-backup -x "nice -n 19 ssh user@remote 'tar -cf - ${remote_dir}/files1 ${remote_dir}/files2 2>/dev/null' | pixz -c" -s ".txz" "${backup_dir}/daily" "$daily_keep"
+# Weekly
+0  0  *  *  7 root simple-backup -c "${backup_dir}/daily" -N "${backup_dir}/weekly" "$weekly_keep"
+# Monthly
+0  0  1  *  * root simple-backup -c "${backup_dir}/weekly" -N "${backup_dir}/monthly" "$monthly_keep"
+# Yearly
+0  0  1  1  * root simple-backup -c "${backup_dir}/monthly" -N "${backup_dir}/yearly" "$yearly_keep"
