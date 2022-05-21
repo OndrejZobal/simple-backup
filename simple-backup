@@ -29,6 +29,31 @@ name_suffix=
 # Is set, if the new file name should be the same as the old one.
 preserve_name=
 
+help_string="$0 (-x COMMAND | -c PATH) [OPTIONS] BACKUP_DIRECTORY KEEP_COUNT
+ Description:
+    Creates a backup of file or data stream and saves it toa a given BACKUP_DIRECTORY.
+    Then it will check if BACKUP_DIRECTORY contains more backups than KEEP_COUNT and
+    if so, deletes the oldest ones, based on the time-stamp in their file name.
+ Positional arguments:
+    BACKUP_DIRECTORY:  Location of the directory containing the backups.
+    KEEP_COUNT:        The number of the most recent backups that should be kept.
+ Compulsory options (one of these options has to be specified):
+    -x COMMAND: Specify a command which will return data you want to backup
+                on stdout.
+    -c PATH:    Specify a path to a file you want to backup. If a path to a directory
+                was given, the program will pick the (alphabetically) first file
+                in this directory. The program will attempt to create a backup
+                using a hardlink. If it's not possible, then the file will be
+                copied.
+ Options:
+    -h:         Display this message
+    -N:         Keep old filename. This can be used only when using the '-c' option.
+    -n NAME:    Sets the name of the backup file to a give string. NOTE: This
+                program only cleans up old files that begin their name with a time-stamp,
+                so your name should follow the 'date -uIseconds' format.
+    -s SUFFIX:  Sets a suffix that will be added to the end of the newly created file.
+                Usually you will want to use this option for adding a file extension "
+
 
 ### ====================
 ### Processing arguments
@@ -37,7 +62,7 @@ while getopts 'hn:Ns:x:c:' o; do
     case "$o" in
         # Print help
         h)
-            echo "help"
+            echo "$help_string"
             exit 0
             ;;
 
@@ -71,18 +96,20 @@ while getopts 'hn:Ns:x:c:' o; do
             source_file=${!n}
             ;;
         *)
+            echo "Use '$0 -h' for help"
+            exit 1
             ;;
     esac
 done
 
 # Edgecases
 if [[ "$source_command" && "$source_file" ]]; then
-    echo "Both source file and source command have been given! Pick one!"
+    echo "Both source file '-c' and source command '-x' have been given! Pick one!"
     exit 1
     fi
 
 if [[ ! ("$source_command" || "$source_file") ]]; then
-    echo "You either have to specify source command (-x) or a source file (-c)"
+    echo "You either have to specify source command '-x' or a source file '-c'"
     exit 1
     fi
 
