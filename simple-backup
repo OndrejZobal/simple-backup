@@ -102,9 +102,9 @@ if [ "$#" -ne 2 ]; then
     exit 1
     fi
 
-### =================
-### Do the backup up
-### =================
+### ====================
+### Create the backup up
+### ====================
 # Generate backup name
 if [ -z "$backup_name" ]; then
     backup_name="$(date -uIseconds)"
@@ -146,7 +146,7 @@ else
 ### ==================
 ### Delete old backups
 ### ==================
-delete_list=$(ls "${backup_dir}" | sort -r | awk -F "\n" -v keep=${keep_count} -v dir=${backup_dir} '
+delete_list=$(ls "${backup_dir}" | grep -E "[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}.*" | sort -r | awk -F "\n" -v keep=${keep_count} -v dir=${backup_dir} '
                  BEGIN{
                     cnt=0
                  } {
